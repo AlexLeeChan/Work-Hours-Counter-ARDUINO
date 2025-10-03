@@ -71,7 +71,7 @@
 // How many EEPROM slots to use for ring-buffer wear leveling.
 // Must fit in EEPROM. Each slot stores one SaveImage.
 #ifndef EEPROM_NUM_SLOTS
-#define EEPROM_NUM_SLOTS 16
+#define EEPROM_NUM_SLOTS 32
 #endif
 
 // Conditional includes based on feature flags
