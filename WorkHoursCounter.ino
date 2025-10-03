@@ -121,7 +121,7 @@ constexpr uint8_t PIN_BUTTONS[NUM_COUNTERS] = {11, 12, 9, 10}; // Digital pins f
 // =========================== Timing Constants ===========================
 constexpr uint8_t       DEBOUNCE_MS               = 10;      // Milliseconds for button debounce stabilization
 constexpr uint8_t       CONTRAST_PWM_DUTY         = 0;       // PWM value for LCD contrast (0-255)
-constexpr unsigned long SAVE_PERIOD_MS            = 10000UL; // 10 seconds auto-save interval
+constexpr unsigned long SAVE_PERIOD_MS            = 30000UL; // 30 seconds auto-save interval
 constexpr unsigned long RESET_HOLD_MS             = 3000UL;  // 3 seconds continuous hold required for reset
 constexpr unsigned long COUNTDOWN_SHOW_DELAY_MS   = 1000UL;  // 1 second hold before the countdown display starts
 
