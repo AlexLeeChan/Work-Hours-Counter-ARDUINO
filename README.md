@@ -14,9 +14,7 @@ Although originally designed for amplifier repairs, this timer can be used to me
 - [Build & Upload](#build--upload)
 - [Configuration](#configuration)
 - [How to Use](#how-to-use)
-- [Persistence & Data Integrity](#persistence--data-integrity)
 - [Troubleshooting](#troubleshooting)
-- [Roadmap](#roadmap)
 - [License](#license)
 
 ## Features
