@@ -1,5 +1,5 @@
 /*
-  Work Hours Counter v4.7
+  Work Hours Counter v4.8
   I needed a way to keep track of the time spent repairing amplifiers.
   Since I often work on several units in parallel—sometimes pausing one while waiting for parts—
   I decided to build a dedicated work hour counter. I had a nice 4-button keypad at stock,
@@ -40,7 +40,7 @@
 // FRAM advantages: unlimited write cycles, faster writes, no wear leveling needed
 // EEPROM limitations: ~100,000 write cycles per cell
 // Set to 1 if Adafruit FRAM I2C breakout is connected
-#define USE_FRAM 0
+#define USE_FRAM 1
 
 // USE_COUNTDOWN: Enables visual countdown timer during hold-to-reset
 // When enabled (1):
@@ -96,9 +96,10 @@ const char kTxtHoldReset[]   PROGMEM = "Hold reset: "; // Text shown during rese
 constexpr uint8_t TXT_HOLD_RESET_LEN = sizeof(kTxtHoldReset) - 1; // Length of reset text
 
 // Storage detection messages shown on startup if FRAM is enabled
-const char kTxtUsingFRAM[]    PROGMEM = " Using FRAM    ";
+const char kTxtUsingFRAM[]    PROGMEM = "   Using FRAM  ";
 const char kTxtFRAMNotFound[] PROGMEM = " FRAM not found";
-const char kTxtUsingEEPROM[]  PROGMEM = " Using EEPROM  ";
+const char kTxtUsingEEPROM[]  PROGMEM = "  Using EEPROM ";
+const char* bootMessage = kTxtUsingEEPROM; // Default boot animation text
 
 // =========================== Hardware Configuration ===========================
 constexpr uint8_t NUM_COUNTERS = 4;  // Number of independent timers/buttons
@@ -121,9 +122,11 @@ constexpr uint8_t PIN_BUTTONS[NUM_COUNTERS] = {11, 12, 9, 10}; // Digital pins f
 // =========================== Timing Constants ===========================
 constexpr uint8_t       DEBOUNCE_MS               = 10;      // Milliseconds for button debounce stabilization
 constexpr uint8_t       CONTRAST_PWM_DUTY         = 0;       // PWM value for LCD contrast (0-255)
-constexpr unsigned long SAVE_PERIOD_MS            = 30000UL; // 30 seconds auto-save interval
+constexpr unsigned long SAVE_PERIOD_MS_EEPROM     = 30000UL; // 30 seconds auto-save interval for EEPROM
+constexpr unsigned long SAVE_PERIOD_MS_FRAM       = 5000UL;  // 5 seconds auto-save interval for FRAM
 constexpr unsigned long RESET_HOLD_MS             = 3000UL;  // 3 seconds continuous hold required for reset
 constexpr unsigned long COUNTDOWN_SHOW_DELAY_MS   = 1000UL;  // 1 second hold before the countdown display starts
+constexpr uint16_t      BOOT_ANIMATION_MS         = 700;    // Duration of boot animation in milliseconds
 
 #if USE_FRAM
   constexpr uint8_t FRAM_I2C_ADDR = 0x50; // Default I2C address for FRAM module
@@ -429,7 +432,8 @@ static bool save_to_storage() {
 // Checks if the auto-save period has elapsed and saves if needed
 static void maybe_autosave(bool force=false) {
   unsigned long now = millis();
-  if (!force && (now - lastSaveMs) < SAVE_PERIOD_MS) return;
+  unsigned long savePeriod = useFRAM ? SAVE_PERIOD_MS_FRAM : SAVE_PERIOD_MS_EEPROM;
+  if (!force && (now - lastSaveMs) < savePeriod) return;
   (void)save_to_storage();
   lastSaveMs = now;
 }
@@ -672,10 +676,10 @@ static void on_button_rise(uint8_t idx){
     isRunning = !isRunning; // Toggle run/pause state
     if (isRunning) {
       zeroTime = millis(); // Reset time anchor for accurate timing
-      Beeper::startTone();
+      
     } else {
       maybe_autosave(true); // Immediate save on pause
-      Beeper::pauseTone();
+      
     }
   }
 }
@@ -762,6 +766,11 @@ static inline void drawBarRow(uint8_t row, uint8_t cells, uint8_t fullCells, uin
 static void lcdStartupAnim(uint16_t total_ms = 1200) {
   lcd.clear();
   lcdLoadBarChars();
+  
+  // Display storage type on second row
+  lcd.setCursor(0, 1);
+  lcdPrint_P(bootMessage);
+  
   const uint8_t  cells = LCD_COLS;
   const uint16_t steps = cells * 5; // Total animation frames (cells * sub-steps)
   const uint16_t frameDelay = steps ? (total_ms / steps) : total_ms;
@@ -770,7 +779,6 @@ static void lcdStartupAnim(uint16_t total_ms = 1200) {
     const uint8_t fullCells = step / 5;
     const uint8_t partial   = step % 5;
     drawBarRow(0, cells, fullCells, partial); // Draw on row 0
-    drawBarRow(1, cells, fullCells, partial); // Draw on row 1
     if (frameDelay) delay(frameDelay); // Delay for frame rate control
   }
   lcd.clear();
@@ -780,40 +788,41 @@ static void lcdStartupAnim(uint16_t total_ms = 1200) {
 // =========================== Setup & Loop ===========================
 void setup() {
   // Initialize LCD and contrast
-  lcd.begin(LCD_COLS, LCD_ROWS); // Start LCD library
+  lcd.begin(LCD_COLS, LCD_ROWS);
   pinMode(PIN_CONTRAST_PWM, OUTPUT);
-  analogWrite(PIN_CONTRAST_PWM, CONTRAST_PWM_DUTY); // Set contrast PWM duty cycle
+  analogWrite(PIN_CONTRAST_PWM, CONTRAST_PWM_DUTY);
+
+#if USE_FRAM
+  // --- Initialize I2C and check for FRAM *before* boot animation ---
+  Wire.begin();
+  if (fram.begin(FRAM_I2C_ADDR)) {
+    useFRAM = true;
+    bootMessage = kTxtUsingFRAM;        // FRAM detected
+  } else {
+    useFRAM = false;
+    bootMessage = kTxtFRAMNotFound;     // FRAM not found
+  }
+#else
+  useFRAM = false;
+  bootMessage = kTxtUsingEEPROM;
+#endif
 
 #if ENABLE_STARTUP_ANIM
-  lcdStartupAnim(80); // Run brief progress bar animation
+  lcdStartupAnim(BOOT_ANIMATION_MS); // Now shows correct storage message
 #endif
 
   // Beeper init (non-blocking)
   pinMode(PIN_BEEPER, OUTPUT);
   digitalWrite(PIN_BEEPER, LOW);
-  Beeper::begin(PIN_BEEPER); // Initialize Beeper class
+  Beeper::begin(PIN_BEEPER);
 
-  // Initialize all 4 button debouncers
+  // Initialize buttons
   for (uint8_t i=0;i<NUM_COUNTERS;++i) Debounce::init(debs[i], PIN_BUTTONS[i]);
-
-#if USE_FRAM
-  // Initialize I2C and check for FRAM
-  Wire.begin();
-  if (!fram.begin(FRAM_I2C_ADDR)) { // Check if FRAM chip responds
-    useFRAM = false;
-    lcd.setCursor(0,0); lcdPrint_P(kTxtFRAMNotFound);
-    lcd.setCursor(0,1); lcdPrint_P(kTxtUsingEEPROM);
-    delay(700); lcd.clear();
-  } else {
-    lcd.setCursor(0,0); lcdPrint_P(kTxtUsingFRAM);
-    delay(500); lcd.clear();
-  }
-#endif
 
   // Load counters from persistent storage
   load_from_storage_or_default();
 
-  // Initial UI drawing and state cache initialization
+  // Draw initial UI...
   draw_header_normal();
   draw_time(counters[activeIndex].h, counters[activeIndex].m, counters[activeIndex].s);
   ui.shownIndex = activeIndex;
@@ -826,8 +835,8 @@ void setup() {
   ui.holdSec = 255;
 #endif
 
-  zeroTime   = millis(); // Set time anchor for time accumulation
-  lastSaveMs = millis(); // Set time anchor for auto-save
+  zeroTime   = millis();
+  lastSaveMs = millis();
 }
 
 void loop() {
