@@ -1,5 +1,5 @@
 /*
-  Work Hours Counter v4.8
+  Work Timer v4.8
   I needed a way to keep track of the time spent repairing amplifiers.
   Since I often work on several units in parallel—sometimes pausing one while waiting for parts—
   I decided to build a dedicated work hour counter. I had a nice 4-button keypad at stock,
