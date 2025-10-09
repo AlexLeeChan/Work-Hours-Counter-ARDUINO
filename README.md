@@ -61,7 +61,7 @@ Try the full system directly in your browser using Wokwi:
 - **Beeper**
   - Active buzzer (simple on/off)
   - OR Passive piezo (uses `tone()`)
-- *(Optional)* **I²C FRAM** (Adafruit I²C FRAM, addr `0x50`)  
+- *(Optional)* **I²C FRAM** (Adafruit I²C FRAM)  
 - *(Optional)* LCD contrast control via PWM
 
 ## Pinout
@@ -110,22 +110,21 @@ Set these at the top of the sketch:
 #define USE_PASSIVE_BUZZER    0    // 0=active buzzer, 1=passive piezo (tone)
 #define USE_FRAM              0    // 1=Use Adafruit I2C FRAM (0x50)
 #ifndef EEPROM_NUM_SLOTS
-#define EEPROM_NUM_SLOTS      16   // Number of EEPROM wear-leveling slots
+#define EEPROM_NUM_SLOTS      32   // Max number of EEPROM wear-leveling slots. The firmware automatically caps the number of slots if needed.
 #endif
 ```
 
 Timing constants:
 
 ```
-constexpr uint8_t  DEBOUNCE_MS                  = 10;
-constexpr uint8_t  CONTRAST_PWM_DUTY            = 0;
-constexpr unsigned long SAVE_PERIOD_MS          = 10000UL;  // autosave every 10s
-constexpr unsigned long RESET_HOLD_MS           = 3000UL;   // hold 3s to reset
-constexpr unsigned long COUNTDOWN_SHOW_DELAY_MS = 1000UL;   // show countdown after 1s
+constexpr uint8_t       DEBOUNCE_MS               = 10;      // Milliseconds for button debounce stabilization
+constexpr uint8_t       CONTRAST_PWM_DUTY         = 0;       // PWM value for LCD contrast (0-255)
+constexpr unsigned long SAVE_PERIOD_MS_EEPROM     = 30000UL; // 30 seconds auto-save interval for EEPROM
+constexpr unsigned long SAVE_PERIOD_MS_FRAM       = 5000UL;  // 5 seconds auto-save interval for FRAM
+constexpr unsigned long RESET_HOLD_MS             = 3000UL;  // 3 seconds continuous hold required for reset
+constexpr unsigned long COUNTDOWN_SHOW_DELAY_MS   = 1000UL;  // 1 second hold before the countdown display starts
+constexpr uint16_t      BOOT_ANIMATION_MS         = 700;    // Duration of boot animation in milliseconds
 ```
-
-> ⚠️ Ensure `EEPROM_NUM_SLOTS * sizeof(SaveImage) <= EEPROM.length()` for your board.  
-> The firmware automatically caps the number of slots if needed.
 
 ## How to Use
 
@@ -154,10 +153,8 @@ Autosave occurs:
 
 | Problem                                   | Fix |
 |-------------------------------------------|-----|
-| `undefined reference to Beeper::kXxx`     | Use the full sketch where the static Beeper arrays are **defined outside** the class. |
 | No sound                                  | Check `USE_PASSIVE_BUZZER` vs hardware and wiring to `PIN_BEEPER`. |
 | LCD blank / gibberish                     | Check RS/EN/D4–D7 wiring, PWM contrast, and pin defines. |
-| EEPROM overflow                           | Reduce `EEPROM_NUM_SLOTS` or use a board with larger EEPROM. |
 | FRAM not detected                         | Check I²C wiring, power, and address (0x50). The sketch will fallback to EEPROM. |
 
 
