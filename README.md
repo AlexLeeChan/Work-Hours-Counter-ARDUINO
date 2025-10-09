@@ -5,6 +5,12 @@ Although originally designed for amplifier repairs, this timer can be used to me
 
 > 🧪 **Live simulation:** [Wokwi Project](https://wokwi.com/projects/342067577537692242)
 
+<p align="left">
+<img src="https://github.com/user-attachments/assets/b8af622c-f801-44d8-b0b6-046c725ac7e1" width="300">
+<img src="https://github.com/user-attachments/assets/ea07894d-e26a-42d5-a1e0-a4023a19f929" width="300">
+</p>
+
+
 ## Table of Contents
 - [Features](#features)
 - [Demo](#demo)
@@ -17,7 +23,9 @@ Although originally designed for amplifier repairs, this timer can be used to me
 - [Troubleshooting](#troubleshooting)
 - [License](#license)
 
-## Features
+## Features!
+
+
 
 - **4 independent timers** — one per button/channel  
 - **Responsive LCD UI**
